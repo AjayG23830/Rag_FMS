@@ -13,7 +13,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-const API = process.env.REACT_APP_API_URL || "https://rag-fms.onrender.com";
+const API = process.env.REACT_APP_API_URL || "https://rag-fms-1.onrender.com";
 
 function Bar({ label, value, max, color = "#2563eb", suffix = "" }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
