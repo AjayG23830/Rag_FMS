@@ -13,7 +13,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-const API = "http://localhost:8000";
+const API = process.env.REACT_APP_API_URL || "https://rag-fms.onrender.com";
 
 function Bar({ label, value, max, color = "#2563eb", suffix = "" }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;
@@ -68,6 +68,9 @@ function Analytics() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
+  const [chatHistory, setChatHistory] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -98,6 +101,22 @@ function Analytics() {
     } catch (err) {
       setMsg({ type: "error", text: err.response?.data?.detail || "ETL failed" });
     } finally { setRunning(false); }
+  };
+
+  const askChat = async () => {
+    const q = chatInput.trim();
+    if (!q) return;
+    setChatInput("");
+    setChatHistory(h => [...h, { role: "user", text: q }]);
+    setChatLoading(true);
+    try {
+      const res = await axios.post(`${API}/analytics/chat`, { question: q });
+      setChatHistory(h => [...h, { role: "ai", text: res.data.answer }]);
+    } catch (err) {
+      setChatHistory(h => [...h, { role: "ai", text: "Error: " + (err.response?.data?.detail || "Could not reach AI.") }]);
+    } finally {
+      setChatLoading(false);
+    }
   };
 
   if (loading) return <div className="loading">⏳ Loading analytics...</div>;
@@ -148,6 +167,54 @@ function Analytics() {
       <div className="card">
         <h3 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "1rem" }}>📅 Monthly Feedback Trend</h3>
         <LineChart data={trend} />
+      </div>
+
+      <div className="card" style={{ marginTop: "1rem" }}>
+        <h3 style={{ fontSize: "1rem", fontWeight: 700, marginBottom: "0.5rem" }}>🤖 Ask AI about your Feedback Data</h3>
+        <p style={{ color: "#64748b", fontSize: "0.85rem", marginBottom: "1rem" }}>
+          Ask questions like "Which program has the lowest rating?" or "How many 5-star reviews did we get?"
+        </p>
+
+        <div style={{ maxHeight: 320, overflowY: "auto", marginBottom: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          {chatHistory.length === 0 && (
+            <p style={{ color: "#94a3b8", fontSize: "0.85rem", textAlign: "center", padding: "1rem 0" }}>No messages yet. Ask something above!</p>
+          )}
+          {chatHistory.map((m, i) => (
+            <div key={i} style={{
+              alignSelf: m.role === "user" ? "flex-end" : "flex-start",
+              background: m.role === "user" ? "#2563eb" : "#f1f5f9",
+              color: m.role === "user" ? "#fff" : "#1e293b",
+              borderRadius: 12,
+              padding: "0.5rem 0.85rem",
+              maxWidth: "80%",
+              fontSize: "0.875rem",
+              whiteSpace: "pre-wrap",
+            }}>
+              {m.text}
+            </div>
+          ))}
+          {chatLoading && (
+            <div style={{ alignSelf: "flex-start", color: "#94a3b8", fontSize: "0.85rem", padding: "0.5rem 0" }}>⏳ Thinking...</div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <input
+            type="text"
+            value={chatInput}
+            onChange={e => setChatInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && !chatLoading && askChat()}
+            placeholder="Ask a question about the feedback data..."
+            disabled={chatLoading}
+            style={{
+              flex: 1, padding: "0.5rem 0.75rem", borderRadius: 8,
+              border: "1px solid #cbd5e1", fontSize: "0.875rem", outline: "none",
+            }}
+          />
+          <button className="btn btn-primary" onClick={askChat} disabled={chatLoading || !chatInput.trim()}>
+            Send
+          </button>
+        </div>
       </div>
     </div>
   );

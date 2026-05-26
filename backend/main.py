@@ -43,8 +43,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from routers import analytics  # noqa: E402  (import after app init)
+from routers import analytics, chat  # noqa: E402  (import after app init)
 app.include_router(analytics.router)
+app.include_router(chat.router)
 
 
 @app.get("/", tags=["Root"])
